@@ -16,7 +16,7 @@ data/
 ├── synthetic_deconv
 ```
 
-<!-- All data files can be downloaded from [here](https://dri). -->
+All data files can be downloaded from [10.5281/zenodo.10223862](10.5281/zenodo.10223862).
 
 ## Data sources
 Descriptions and links to all public datasets analyzed in this study can be found in the corresponding Methods sections of the [Smoother paper](https://www.biorxiv.org/content/10.1101/2022.10.25.513785v2.full). These include:
@@ -30,7 +30,8 @@ Descriptions and links to all public datasets analyzed in this study can be foun
     - Downloaded from 10x Genomics at https://support.10xgenomics.com/spatial-gene-expression/datasets
     - Zhao E, Stone MR, Ren X, Guenthoer J, Smythe KS, Pulliam T, et al. Spatial transcriptomics at subspot resolution with BayesSpace. Nat Biotechnol. 2021;39(11):1375-+.
 4. The spatial-CUT&Tag mouse embryonic data: `data/cutntag_processed/`
-    - Downloaded from GEO at https://www.ncbi.xyz/geo/query/acc.cgi?acc=GSE165217 with preprocessing scripts from Zenodo at https://zenodo.org/record/5797109#.Y9wezOyZP0p. 
+    - Raw data downloaded from GEO at https://www.ncbi.xyz/geo/query/acc.cgi?acc=GSE165217 with preprocessing scripts from Zenodo at https://zenodo.org/record/5797109#.Y9wezOyZP0p. 
+    - For space limit, here we only provide the CUT&Tag data with gene activity score after preprocessing.
     - Deng YX, Bartosovic M, Kukanja P, Zhang D, Liu Y, Su G, et al. Spatial-CUT&Tag: Spatially resolved chromatin modification profiling at the cellular level. Science. 2022;375(6581):681-+.
 5. The CRC Stereo-seq and paired scRNA-seq data: `data/crc_stereo/`
     - Downloaded from CNGB Nucleotide Sequence Archive under accession ID CNP0002432 at https://db.cngb.org/search/project/CNP0002432/. The human prostate Slide-seqV2 data (48) were obtained from https://github.com/shenglinmei/ProstateCancerAnalysis.

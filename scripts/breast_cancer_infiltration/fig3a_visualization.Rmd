@@ -1,0 +1,335 @@
+---
+title: "Figure 2 Plots"
+author: "Jean-Baptiste Reynier"
+date: '2022-08-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/SpatialDeconv/scripts/if_analysis/cleaned_scripts/plot_paper_figure")
+library(jpeg)
+library(ggplot2)
+library(ggpubr)
+library(cowplot)
+library(imagefx)
+library(plyr)
+library(tidyverse)
+```
+
+### CD3 staining:
+
+#### Load image and data:
+```{r}
+calc_tpr_fpr <- function(df, true_thres = 0.0626, pred_thres = 0.1) {
+  df <- df %>% mutate(
+    is_t_true = cd3_intensity >= true_thres,
+    is_t_pred = T.cells >= pred_thres,
+    result_min = case_when(
+      is_t_true & is_t_pred ~ "True positive",
+      (!is_t_true) & is_t_pred ~ "False positive",
+      is_t_true & (!is_t_pred) ~ "False negative",
+      (!is_t_true) & (!is_t_pred) ~ "True negative",
+    )
+  )
+  return(df)
+}
+
+data_dir <- "/Users/jysumac/Projects/SpatialDeconv/scripts/if_analysis/cleaned_scripts/plot_paper_figures/"
+res_dir <- "/Users/jysumac/Projects/SpatialDeconv/results/if_analysis/deconv_results/"
+
+# load the CD3 staining image
+if_breast_cancer <- readJPEG(
+  paste0(data_dir, "V1_Human_Invasive_Ductal_Carcinoma_image.jpg")
+)
+
+# load deconvolution results
+df_nnls <- read.csv(
+  paste0(data_dir, "nnls_tcell_cd3_results.csv")
+) %>%
+  calc_tpr_fpr()
+df_card <- read.csv(
+  paste0(data_dir, "card_tcell_cd3_results.csv")
+) %>%
+  calc_tpr_fpr()
+
+table(df_nnls$result_min)
+```
+
+
+#### Visualization functions:
+```{r}
+plot_binary_pred <- function(df, plot_tn = FALSE) {
+  p <- ggplot(
+    df,
+    aes(x = y_adjusted, y = x_adjusted)
+  ) +
+    background_image(if_breast_cancer) +
+    geom_point(
+      shape = 21,
+      data = df[df$result_min == "True positive", ],
+      color = "white",
+      alpha = 0.7,
+      stroke = 0.5,
+      size = 2
+    ) +
+    geom_point(
+      shape = 21,
+      data = df[df$result_min == "False negative", ],
+      color = "firebrick1",
+      alpha = 0.7,
+      stroke = 0.5,
+      size = 2
+    ) +
+    geom_point(
+      shape = 21,
+      data = df[df$result_min == "True positive", ],
+      fill = "dodgerblue",
+      stroke = 0,
+      alpha = 1,
+      size = 1.8
+    ) +
+    geom_point(
+      shape = 21,
+      data = df[df$result_min == "False positive", ],
+      fill = "firebrick1",
+      stroke = 0,
+      alpha = 0.7,
+      size = 1.8
+    ) +
+    # geom_point(x = 0.6836634, y = 0.1290017, color = "yellow") +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    theme_void() +
+    theme(legend.position = "none", plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+  if (plot_tn) {
+    p <- p + geom_point(
+      shape = 21,
+      data = df[df$result_min == "True negative", ],
+      color = "dodgerblue",
+      alpha = 0.7,
+      stroke = 0.5,
+      size = 2
+    )
+  }
+
+  return(p)
+}
+
+aggr_immune <- function(df) {
+  df %>% mutate(
+    meta_immune = CAFs + B.cells + T.cells + Myeloid,
+    meta_normal = Endothelial + PVL + Normal.Epithelial + Plasmablasts,
+    meta_tumor = Cancer.Epithelial
+  ) %>% return()
+}
+
+aggr_t <- function(df){
+  df %>% mutate(
+    t_cell = T.cells,
+    non_t_cell = 1 - t_cell
+  ) %>% return()
+}
+
+crop_img <- function(img, xmin, xmax, ymin, ymax){
+  # crop image
+  img_ymin <- round(xmin * 1024) + 1
+  img_ymax <- round(xmax * 1024)
+  img_xmin <- 1024 - round(ymax * 1024) + 1
+  img_xmax <- 1024 - round(ymin * 1024)
+  crop_img <- img[img_xmin:img_xmax, img_ymin:img_ymax, ]
+  return(crop_img)
+}
+
+plot_celltype_pie <- function(df, aggr = NULL,
+                              xmin = 0, xmax = 1, ymin = 0, ymax = 1) {
+  # crop image
+  crop_img <- crop_img(if_breast_cancer, xmin, xmax, ymin, ymax)
+  
+  # aggregate cell-type proportions
+  if (is.null(aggr)){
+    cols <- c("Endothelial", "CAFs", "PVL", "B.cells", "T.cells", "Myeloid", 
+              "Normal.Epithelial", "Plasmablasts", "Cancer.Epithelial")
+  } else if (aggr == 'immune'){
+    df <- aggr_immune(df)
+    cols <- c("meta_immune", "meta_normal", "meta_tumor")
+    colors <- c(
+      "meta_tumor" = "#C80813FF", # red
+      "meta_immune" = "#71D0F5FF", # blue
+      "meta_normal" = "#370335FF" # purple
+    )
+  } else if (aggr == 't'){
+    df <- aggr_t(df)
+    cols <- c("t_cell", "non_t_cell")
+    colors <- c(
+      "t_cell" = "#FED439FF", # yellow
+      "non_t_cell" = "#00000000" # transparent
+    )
+  }
+
+  df_pos <- df %>% filter(is_t_true)
+  df_neg <- df %>% filter(!is_t_true)
+  
+  # generate plots
+  p <- ggplot(
+    df,
+    aes(x = y_adjusted, y = x_adjusted)
+  ) +
+    background_image(crop_img) +
+    scatterpie::geom_scatterpie(
+      data = df_pos, aes(x = y_adjusted, y = x_adjusted),
+      color = "#FED439FF", pie_scale = 0.35, size = 0.1,
+      cols = cols
+    ) +
+    scatterpie::geom_scatterpie(
+      data = df_neg, aes(x = y_adjusted, y = x_adjusted),
+      color = "red", pie_scale = 0.35, size = 0.1,
+      cols = cols
+    ) +
+    coord_cartesian(xlim = c(xmin, xmax), ylim = c(ymin, ymax), expand = FALSE) +
+    theme_void() +
+    theme(legend.position = "none", plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+  
+  if (!is.null(aggr)){
+    p <- p + scale_fill_manual(values = colors)
+  }
+
+  return(p)
+}
+```
+
+
+#### Binary plots
+```{r fig.width=6, fig.height=3}
+nnls_cd3_plot <- df_nnls %>% plot_binary_pred(plot_tn = FALSE)
+card_cd3_plot <- df_card %>% plot_binary_pred(plot_tn = FALSE)
+
+cowplot::plot_grid(nnls_cd3_plot, card_cd3_plot, nrow = 1)
+```
+
+#### Pie plots
+```{r fig.width=6, fig.height=3}
+bg <- ggplot() + background_image(crop_img(if_breast_cancer, xmin = 0.45, xmax = 0.95, ymin = 0.3, ymax = 0.8))
+nnls_pie <- df_nnls %>%
+  #filter(is_t_true) %>%
+  plot_celltype_pie(
+    aggr = "t",
+    xmin = 0.45, xmax = 0.95, ymin = 0.3, ymax = 0.8)
+card_pie <- df_card %>%
+  #filter(is_t_true) %>%
+  plot_celltype_pie(
+    aggr = "t",
+    xmin = 0.45, xmax = 0.95, ymin = 0.3, ymax = 0.8)
+cowplot::plot_grid(bg, nnls_pie, card_pie, ncol = 1)
+```
+
+
+#### Create fake plot to format proper legend:
+
+```{r}
+fake_data <- data.frame(
+  x = c(0.1, 0.2, 0.3, 0.4),
+  y = c(0.9, 0.8, 0.7, 0.6)
+)
+
+# Change font size, point size, and relative point size (to match above)
+plot_legend_cd3 <- ggplot() +
+  geom_point(aes(x = x, y = y, alpha = "algorithm prediction"),
+    shape = 21,
+    data = fake_data,
+    fill = "black",
+    size = 10
+  ) +
+  geom_point(aes(x = x, y = y, alpha = "CD3 staining"),
+    shape = 21,
+    data = fake_data,
+    size = 10
+  ) +
+  scale_alpha_manual(values = c(
+    "CD3 staining" = 21,
+    "T-cell presence predicted" = 21
+  )) +
+  scale_color_manual(values = c(
+    "Correct" = "dodgerblue",
+    "Incorrect" = "firebrick1"
+  )) +
+  geom_point(aes(x = x, y = y, color = "Correct"),
+    shape = 15,
+    data = fake_data,
+    size = 10
+  ) +
+  geom_point(aes(x = x, y = y, color = "Incorrect"),
+    shape = 15,
+    data = fake_data,
+    size = 10
+  ) +
+  guides(
+    alpha = guide_legend(
+      override.aes = list(fill = list(NA, "black"), stroke = c(0.7, 0))
+    )
+  ) +
+  theme_void() +
+  theme(legend.title = element_blank(), text = element_text(size = 20))
+
+legend_cd3 <- get_legend(plot_legend_cd3)
+```
+
+```{r}
+ggdraw(plot_grid(nnls_cd3_plot, card_cd3_plot, legend_cd3, nrow = 1, align = "h", axis = "r", rel_widths = c(3, 3, 2)))
+ggsave("nnls_cd3_plot.pdf", width = 42, height = 18, units = "cm")
+ggsave("nnls_cd3_plot.png", width = 42, height = 18, units = "cm")
+```
+
+
+```{r}
+labels <- c("Tumor region", "Tumor region with high CD3",
+            "Estimated T-cell proportion")
+fake_data <- data.frame(
+  x = c(0.1, 0.2, 0.3),
+  y = c(0.9, 0.8, 0.7),
+  shape = labels %>% factor(levels = labels)
+)
+
+# Change font size, point size, and relative point size (to match above)
+plot_legend_cd3 <- fake_data %>%
+  ggplot() +
+  geom_point(aes(x = x, y = y, shape = shape, color = shape),
+    size = 4, stroke = 1
+  ) +
+  scale_shape_manual(
+    name = "R",
+    values = c(
+    "Tumor region" = 21,
+    "Tumor region with high CD3" = 21,
+    "Estimated T-cell proportion" = 19
+  )) +
+  scale_color_manual(
+    name = "R",
+    values = c(
+    "Tumor region" = "red",
+    "Tumor region with high CD3" = "#FED439FF",
+    "Estimated T-cell proportion" = "#FED439FF"
+  )) +
+  theme_void() +
+  theme(legend.title = element_blank(), text = element_text(size = 12))
+
+legend_cd3 <- get_legend(plot_legend_cd3)
+```
+
+```{r fig.width=8, fig.height=3}
+ggdraw(
+  plot_grid(
+    nnls_pie, card_pie, bg, legend_cd3, 
+    nrow = 2, align = "h", axis = "r"
+  )
+)
+ggsave(
+  "/Users/jysumac/Projects/SpatialDeconv/results/figures/if/tumor_infiltration.pdf", 
+  width = 20, height = 20, units = "cm"
+)
+ggsave(
+  "/Users/jysumac/Projects/SpatialDeconv/results/figures/if/tumor_infiltration.png", 
+  width = 20, height = 20, units = "cm"
+)
+```

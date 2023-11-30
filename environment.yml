@@ -1,0 +1,26 @@
+name: smoother_paper
+channels:
+  - conda-forge
+dependencies:
+  - python<4.0
+  - pip
+  - scipy
+  - pytorch
+  - pandas
+  - scanpy
+  - python-igraph 
+  - leidenalg
+  - scvi-tools
+  - scikit-learn
+  - matplotlib==3.5.3
+  - plotnine==0.8.0
+  - jupyterlab
+  - ipywidgets
+  - pynndescent
+  - cvxpy
+  - pip:
+    - squidpy
+    - fuzzy-c-means
+    - memory_profiler
+    - plotnine_prism
+    - scikit-bio==0.5.8

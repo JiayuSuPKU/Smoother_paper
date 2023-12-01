@@ -1,0 +1,258 @@
+---
+title: "CARD IF Benchmarking"
+author: "Jean-Baptiste Reynier"
+date: '2022-07-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(CARD)
+library(Seurat)
+library(dplyr)
+# added for CARD_deconvolution function:
+library(fields)
+library(MCMCpack)
+library(Rcpp)
+data_dir <- "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution/Data/ductal_carcinoma"
+res_dir <- "/Users/jfr2137/Desktop/Research/Rabadan\ Lab/Spatial Deconvolution/Results/ductal_carcinoma/card_results"
+knitr::opts_knit$set(root.dir = data_dir)
+```
+
+## Preprocess data:
+
+#### Load data:
+```{r}
+sc_breast_cancer.data <- Read10X(
+  "scref/Wu_etal_2021_BRCA_scRNASeq",
+  gene.column = 1,
+  cell.column = 1
+)
+```
+
+```{r}
+st_breast_cancer.data <- Read10X(
+  data.dir="10x_visium/filtered_count_matrix")
+```
+
+#### Subset genes in common between scRNA-seq and spatial data:
+
+```{r}
+genes_in_common <- inner_join(
+  data.frame("hgnc" = rownames(st_breast_cancer.data)),
+  data.frame("hgnc" = rownames(sc_breast_cancer.data)))
+```
+
+```{r}
+sc_breast_cancer.data <- sc_breast_cancer.data[genes_in_common$hgnc,]
+```
+
+```{r}
+st_breast_cancer.data <- st_breast_cancer.data[genes_in_common$hgnc,]
+```
+
+#### Preprocess scRNA-seq data:
+
+```{r}
+sc_breast_cancer <- CreateSeuratObject(counts = sc_breast_cancer.data,
+                                       project = "sc_breast_cancer",
+                                       min.cells = 20, min.features = 200)
+```
+
+
+```{r}
+cluster_info <- read.csv("scref/Wu_etal_2021_BRCA_scRNASeq/metadata.csv")
+rownames(cluster_info) <- cluster_info$X
+cluster_info <- cluster_info[Cells(sc_breast_cancer),]
+cluster_info <- subset(cluster_info, select = -c(X))
+```
+
+```{r}
+sc_breast_cancer <- AddMetaData(object = sc_breast_cancer, 
+                                metadata = cluster_info$celltype_major,
+                                col.name = "celltype")
+sc_breast_cancer <- SetIdent(sc_breast_cancer, value = "celltype")
+# sc_breast_cancer <- NormalizeData(sc_breast_cancer,
+# normalization.method = "LogNormalize")
+
+```
+
+### Preprocess spatial data:
+
+```{r}
+st_breast_cancer_positions <- read.csv("10x_visium/spatial/tissue_positions_list.csv",
+  header = FALSE,
+  row.names = 1,
+  col.names = c('barcode', 'in_tissue', 'array_row', 'array_col',
+                'pxl_col_in_fullres', 'pxl_row_in_fullres')
+)
+
+st_breast_cancer_positions <- st_breast_cancer_positions[
+  c("array_col", "array_row")]
+colnames(st_breast_cancer_positions) <- c("x", "y")
+```
+
+```{r}
+st_breast_cancer_positions <- st_breast_cancer_positions[
+  st_breast_cancer.data@Dimnames[[2]],]
+st_breast_cancer.data <- st_breast_cancer.data[
+  ,rownames(st_breast_cancer_positions)]
+```
+
+
+## Run CARD (with spatial):
+
+```{r}
+CARD_obj = createCARDObject(
+	sc_count = GetAssayData(sc_breast_cancer, assay = "RNA", layer = "counts"),
+	sc_meta = cluster_info,
+	spatial_count = st_breast_cancer.data,
+	spatial_location = st_breast_cancer_positions,
+	ct.varname = "celltype_major",
+	ct.select = unique(cluster_info$celltype_major),
+	sample.varname = "orig.ident",
+	minCountGene = 100,
+	minCountSpot = 5)
+```
+
+```{r}
+CARD_obj = CARD_deconvolution(CARD_object = CARD_obj)
+```
+
+```{r}
+write.csv(CARD_obj@Proportion_CARD,
+          paste(res_dir, "ductal_carcinoma_card_spatial.csv", sep="/"))
+```
+
+## Run CARD (no spatial):
+
+```{r}
+CARD_obj_nospatial <- createCARDObject(
+	sc_count = GetAssayData(sc_breast_cancer, assay = "RNA", layer = "counts"),
+	sc_meta = cluster_info,
+	spatial_count = st_breast_cancer.data,
+	spatial_location = st_breast_cancer_positions,
+	ct.varname = "celltype_major",
+	ct.select = unique(cluster_info$celltype_major),
+	sample.varname = "orig.ident",
+	minCountGene = 100,
+	minCountSpot = 5)
+```
+
+
+### Copy CARD deconvolution code and set phi = 0:
+
+```{r}
+CARD_deconvolution_nospatial <- function(CARD_object){
+  #' @importFrom Rcpp sourceCpp
+  #' @importFrom MCMCpack rdirichlet
+  #' @importFrom fields rdist
+ct.select = CARD_object@info_parameters$ct.select
+ct.varname = CARD_object@info_parameters$ct.varname
+sample.varname = CARD_object@info_parameters$sample.varname
+cat(paste0("## create reference matrix from scRNASeq...\n"))
+sc_eset = CARD_object@sc_eset
+Basis_ref = createscRef(sc_eset, ct.select, ct.varname, sample.varname)
+Basis = Basis_ref$basis
+Basis = Basis[,colnames(Basis) %in% ct.select]
+Basis = Basis[,match(ct.select,colnames(Basis))]
+spatial_count = CARD_object@spatial_countMat
+commonGene = intersect(rownames(spatial_count),rownames(Basis))
+#### remove mitochondrial and ribosomal genes
+commonGene  = commonGene[!(commonGene %in% commonGene[grep("mt-",commonGene)])]
+cat(paste0("## Select Informative Genes! ...\n"))
+common = selectInfo(Basis,sc_eset,commonGene,ct.select,ct.varname)
+Xinput = spatial_count
+rm(spatial_count)
+B = Basis
+rm(Basis)
+##### match the common gene names
+Xinput = Xinput[order(rownames(Xinput)),]
+B = B[order(rownames(B)),]
+B = B[rownames(B) %in% common,]
+Xinput = Xinput[rownames(Xinput) %in% common,]
+##### filter out non expressed genes or cells again
+Xinput = Xinput[rowSums(Xinput) > 0,]
+Xinput = Xinput[,colSums(Xinput) > 0]
+##### normalize count data
+colsumvec = colSums(Xinput)
+Xinput_norm = sweep(Xinput,2,colsumvec,"/")
+B = B[rownames(B) %in% rownames(Xinput_norm),]    
+B = B[match(rownames(Xinput_norm),rownames(B)),]
+#### spatial location
+spatial_location = CARD_object@spatial_location
+spatial_location = spatial_location[rownames(spatial_location) %in% colnames(Xinput_norm),]
+spatial_location = spatial_location[match(colnames(Xinput_norm),rownames(spatial_location)),]
+
+##### normalize the coordinates without changing the shape and relative position
+norm_cords = spatial_location[ ,c("x","y")]
+norm_cords$x = norm_cords$x - min(norm_cords$x)
+norm_cords$y = norm_cords$y - min(norm_cords$y)
+scaleFactor = max(norm_cords$x,norm_cords$y)
+norm_cords$x = norm_cords$x / scaleFactor
+norm_cords$y = norm_cords$y / scaleFactor
+##### initialize the proportion matrix
+ED <- rdist(as.matrix(norm_cords))##Euclidean distance matrix
+cat(paste0("## Deconvolution Starts! ...\n"))
+set.seed(20200107)
+Vint1 = as.matrix(rdirichlet(ncol(Xinput_norm), rep(10,ncol(B))))
+colnames(Vint1) = colnames(B)
+rownames(Vint1) = colnames(Xinput_norm)
+b = rep(0,length(ct.select))
+###### parameters that need to be set
+isigma = 0.1 ####construct Gaussian kernel with the default scale /length parameter to be 0.1
+epsilon = 1e-04  #### convergence epsion 
+phi = c(0) #### grided values for phi
+kernel_mat <- exp(-ED^2 / (2 * isigma^2))
+diag(kernel_mat) <- 0
+rm(ED)
+rm(Xinput)
+rm(norm_cords)
+gc()
+###### scale the Xinput_norm and B to speed up the convergence. 
+mean_X = mean(Xinput_norm)
+mean_B = mean(B)
+Xinput_norm = Xinput_norm * 1e-01 / mean_X
+B = B * 1e-01 / mean_B
+gc()
+ResList = list()
+Obj = c()
+for(iphi in 1:length(phi)){
+res = CARDref(
+  XinputIn = as.matrix(Xinput_norm),
+  UIn = as.matrix(B),
+  WIn = kernel_mat, 
+  phiIn = phi[iphi],
+  max_iterIn =1000,
+  epsilonIn = epsilon,
+  initV = Vint1,
+  initb = rep(0,ncol(B)),
+  initSigma_e2 = 0.1, 
+  initLambda = rep(10,length(ct.select)))
+rownames(res$V) = colnames(Xinput_norm)
+colnames(res$V) = colnames(B)
+ResList[[iphi]] = res
+Obj = c(Obj,res$Obj)
+}
+Optimal = which(Obj == max(Obj))
+Optimal = Optimal[length(Optimal)] #### just in case if there are two equal objective function values
+OptimalPhi = phi[Optimal]
+OptimalRes = ResList[[Optimal]]
+cat(paste0("## Deconvolution Finish! ...\n"))
+CARD_object@info_parameters$phi = OptimalPhi
+CARD_object@Proportion_CARD = sweep(OptimalRes$V,1,rowSums(OptimalRes$V),"/")
+CARD_object@algorithm_matrix = list(B = B * mean_B / 1e-01, Xinput_norm = Xinput_norm * mean_X / 1e-01, Res = OptimalRes)
+CARD_object@spatial_location = spatial_location
+return(CARD_object)
+}
+```
+
+```{r}
+CARD_obj_nospatial = CARD_deconvolution_nospatial(
+  CARD_object = CARD_obj_nospatial)
+```
+
+```{r}
+write.csv(CARD_obj_nospatial@Proportion_CARD,
+          paste(res_dir, "ductal_carcinoma_card_nospatial.csv", sep="/"))
+```

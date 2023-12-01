@@ -1,0 +1,90 @@
+---
+title: "Breast Cancer Data Preprocessing"
+author: "Jean-Baptiste Reynier"
+date: "3/27/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Seurat)
+library(dplyr)
+data_dir <- "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution/Data/ductal_carcinoma"
+knitr::opts_knit$set(root.dir = data_dir)
+```
+
+## Load scRNA-seq dataset
+
+
+```{r}
+sc_breast_cancer.data <- Read10X(
+  "scref/Wu_etal_2021_BRCA_scRNASeq",
+  gene.column = 1,
+  cell.column = 1
+)
+```
+
+```{r}
+st_breast_cancer.data <- Read10X(
+  data.dir="10x_visium/filtered_count_matrix")
+```
+
+#### Subset genes in common between scRNA-seq and spatial data:
+
+```{r}
+genes_in_common <- inner_join(
+  data.frame("hgnc" = rownames(st_breast_cancer.data)),
+  data.frame("hgnc" = rownames(sc_breast_cancer.data)))
+```
+
+```{r}
+sc_breast_cancer.data <- sc_breast_cancer.data[genes_in_common$hgnc,]
+```
+
+## Create Seurat object and add metadata
+
+```{r}
+sc_breast_cancer <- CreateSeuratObject(counts = sc_breast_cancer.data,
+                                       project = "sc_breast_cancer",
+                                       min.cells = 20, min.features = 200)
+```
+
+```{r}
+cluster_info <- read.csv("scref/Wu_etal_2021_BRCA_scRNASeq/metadata.csv")
+sc_breast_cancer <- AddMetaData(object = sc_breast_cancer,
+                                metadata = cluster_info$celltype_major,
+                                col.name = "celltype")
+```
+
+```{r}
+sc_breast_cancer <- SetIdent(sc_breast_cancer, value = "celltype")
+```
+
+```{r}
+sc_breast_cancer <- NormalizeData(sc_breast_cancer,
+                                  normalization.method = "LogNormalize")
+```
+
+
+## Find markers for each celltype
+
+```{r}
+all.markers <- FindAllMarkers(object = sc_breast_cancer, min.pct=0.2,
+                              max.cells.per.ident = 1000, random.seed = 0)
+```
+
+```{r}
+average.expression <- AverageExpression(object = sc_breast_cancer)
+```
+
+```{r}
+df_average_expression <- data.frame(average.expression$RNA)
+df_average_expression$gene <- rownames(df_average_expression)
+write.csv(df_average_expression, "scref/cluster_average_exp.csv",
+          row.names = FALSE)
+write.csv(all.markers, "scref/cluster_all_markers.csv",
+          row.names = FALSE)
+# top100 <- all.markers %>% group_by(cluster) %>% top_n(n = 100)
+# top100 <- top100[!duplicated(top100$gene),]
+# write.csv(top100, "cluster_top100_markers.csv", row.names = FALSE)
+```

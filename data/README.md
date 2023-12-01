@@ -9,6 +9,7 @@ data/
 ├── crc_stereo
 ├── cutntag_processed
 ├── dlpfc_sodb
+├── ductal_carcinoma
 ├── mbm_slideseqv2
 ├── mouse_brain_visium
 ├── prostate_ref_mapping
@@ -16,7 +17,7 @@ data/
 ├── synthetic_deconv
 ```
 
-All data files can be downloaded from [10.5281/zenodo.10223862](10.5281/zenodo.10223862).
+All data files can be downloaded from [10.5281/zenodo.10223862 (DOI)](https://zenodo.org/records/10223862).
 
 ## Data sources
 Descriptions and links to all public datasets analyzed in this study can be found in the corresponding Methods sections of the [Smoother paper](https://www.biorxiv.org/content/10.1101/2022.10.25.513785v2.full). These include:
@@ -26,9 +27,17 @@ Descriptions and links to all public datasets analyzed in this study can be foun
 2. The sci-Space mouse embryonic data: `data/synthethic_deconv/sci_space/`
     - Downloaded from GEO at https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE166692
     - Srivatsan SR, Regier MC, Barkan E, Franks JM, Packer JS, Grosjean P, et al. Embryo-scale, single-cell spatial transcriptomics. Science. 2021;373(6550):111-+.
-3. The 10x Visium invasive ductal carcinoma (IDC) data with DAPI and anti-CD3 staining: `data/breast_cancer_visium/`
-    - Downloaded from 10x Genomics at https://support.10xgenomics.com/spatial-gene-expression/datasets
-    - Zhao E, Stone MR, Ren X, Guenthoer J, Smythe KS, Pulliam T, et al. Spatial transcriptomics at subspot resolution with BayesSpace. Nat Biotechnol. 2021;39(11):1375-+.
+3. The 10x Visium invasive ductal carcinoma (IDC) datasets:
+    1. Visium data with DAPI and anti-CD3 staining in Fig 3a-c: `data/ductal_carcinoma/10x_visium/`
+        - Downloaded from 10x Genomics at https://support.10xgenomics.com/spatial-gene-expression/datasets
+        - Zhao E, Stone MR, Ren X, Guenthoer J, Smythe KS, Pulliam T, et al. Spatial transcriptomics at subspot resolution with BayesSpace. Nat Biotechnol. 2021;39(11):1375-+.
+    2. Single-cell reference data for deconvolution in Fig 3a-c: `data/ductal_carcinoma/scref/`
+        - See https://www.nature.com/articles/s41588-021-00911-1#data-availability.
+        - Wu SZ, Al-Eryani G, Roden DL, Junankar S, Harvey K, Andersson A, et al. A single-cell and spatially resolved atlas of human breast cancers. Nat Genet. 2021;53(9):1334-47. 
+    3. Visium data for histology analysis and boundary visualization in Fig S2: `data/breast_cancer_visium/`
+        - Downloaded from https://doi.org/10.5281/zenodo.4739739
+        - Wu SZ, Al-Eryani G, Roden DL, Junankar S, Harvey K, Andersson A, et al. A single-cell and spatially resolved atlas of human breast cancers. Nat Genet. 2021;53(9):1334-47. https://www.nature.com/articles/s41588-021-00911-1#data-availability.
+
 4. The spatial-CUT&Tag mouse embryonic data: `data/cutntag_processed/`
     - Raw data downloaded from GEO at https://www.ncbi.xyz/geo/query/acc.cgi?acc=GSE165217 with preprocessing scripts from Zenodo at https://zenodo.org/record/5797109#.Y9wezOyZP0p. 
     - For space limit, here we only provide the CUT&Tag data with gene activity score after preprocessing.

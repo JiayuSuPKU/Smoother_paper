@@ -67,7 +67,7 @@ Here is a breakdown of all scripts in this repository by figure and analysis:
 1. Fig 1: Overview of the Smoother framework. Cartoon illustration generated using [BioRender](https://app.biorender.com/user/signin).
 2. Fig 2: Evaluation of spatial regularization effects on deconvolution accuracy using simulated data. See [scripts/synthetic_deconv/](scripts/synthetic_deconv/).
 3. Fig 3: Smoother enhances cell-type deconvolution performance in various spatial omics data.
-    1. Fig 3a-c: Breast cancer T cell infiltration (Visium).
+    1. Fig 3a-c: Breast cancer T cell infiltration (Visium). See [scripts/breast_cancer_infiltration/](scripts/breast_cancer_infiltration/).
     2. Fig 3d-g: Mouse brain neural subtypes (Visium). See [scripts/mouse_brain_visium/](scripts/mouse_brain_visium/).
     3. Fig 3h-k: Cross-modality deconvolution (RNA vs spatial CUT&Tag) of mouse embryonic data. See [scripts/embryo_cutntag/](scripts/embryo_cutntag/).
 4. Fig 4: Smoother detects tumor-specific plasma cell subtypes in colorectal adenocarcinoma Stereo-seq slide. See [scripts/crc_stereo/](scripts/crc_stereo/).

@@ -1,4 +1,5 @@
-# Smoother: a unified and modular framework for incorporating structural dependency in spatial omics data
+# Scripts for "Smoother: a unified and modular framework for incorporating structural dependency in spatial omics data"
+[![DOI](https://zenodo.org/badge/725407828.svg)](https://zenodo.org/doi/10.5281/zenodo.10242792)
 
 ## Description
 

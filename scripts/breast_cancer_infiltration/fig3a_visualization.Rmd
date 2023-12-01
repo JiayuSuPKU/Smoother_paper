@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "~/SpatialDeconv/scripts/if_analysis/cleaned_scripts/plot_paper_figure")
+knitr::opts_knit$set(root.dir = "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution")
 library(jpeg)
 library(ggplot2)
 library(ggpubr)
@@ -35,8 +35,9 @@ calc_tpr_fpr <- function(df, true_thres = 0.0626, pred_thres = 0.1) {
   return(df)
 }
 
-data_dir <- "/Users/jysumac/Projects/SpatialDeconv/scripts/if_analysis/cleaned_scripts/plot_paper_figures/"
-res_dir <- "/Users/jysumac/Projects/SpatialDeconv/results/if_analysis/deconv_results/"
+data_dir <- "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution/Data/ductal_carcinoma/10x_visium/"
+res_dir <- "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution/Results/ductal_carcinoma/"
+fig_res_dir <- "/Users/jfr2137/Desktop/Research/Rabadan Lab/Spatial Deconvolution/Figures/if/"
 
 # load the CD3 staining image
 if_breast_cancer <- readJPEG(
@@ -45,11 +46,11 @@ if_breast_cancer <- readJPEG(
 
 # load deconvolution results
 df_nnls <- read.csv(
-  paste0(data_dir, "nnls_tcell_cd3_results.csv")
+  paste0(res_dir, "nnls_tcell_cd3_results.csv")
 ) %>%
   calc_tpr_fpr()
 df_card <- read.csv(
-  paste0(data_dir, "card_tcell_cd3_results.csv")
+  paste0(res_dir, "card_tcell_cd3_results.csv")
 ) %>%
   calc_tpr_fpr()
 
@@ -228,57 +229,57 @@ cowplot::plot_grid(bg, nnls_pie, card_pie, ncol = 1)
 #### Create fake plot to format proper legend:
 
 ```{r}
-fake_data <- data.frame(
-  x = c(0.1, 0.2, 0.3, 0.4),
-  y = c(0.9, 0.8, 0.7, 0.6)
-)
+# fake_data <- data.frame(
+#   x = c(0.1, 0.2, 0.3, 0.4),
+#   y = c(0.9, 0.8, 0.7, 0.6)
+# )
+# 
+# # Change font size, point size, and relative point size (to match above)
+# plot_legend_cd3 <- ggplot() +
+#   geom_point(aes(x = x, y = y, alpha = "algorithm prediction"),
+#     shape = 21,
+#     data = fake_data,
+#     fill = "black",
+#     size = 10
+#   ) +
+#   geom_point(aes(x = x, y = y, alpha = "CD3 staining"),
+#     shape = 21,
+#     data = fake_data,
+#     size = 10
+#   ) +
+#   scale_alpha_manual(values = c(
+#     "CD3 staining" = 21,
+#     "T-cell presence predicted" = 21
+#   )) +
+#   scale_color_manual(values = c(
+#     "Correct" = "dodgerblue",
+#     "Incorrect" = "firebrick1"
+#   )) +
+#   geom_point(aes(x = x, y = y, color = "Correct"),
+#     shape = 15,
+#     data = fake_data,
+#     size = 10
+#   ) +
+#   geom_point(aes(x = x, y = y, color = "Incorrect"),
+#     shape = 15,
+#     data = fake_data,
+#     size = 10
+#   ) +
+#   guides(
+#     alpha = guide_legend(
+#       override.aes = list(fill = list(NA, "black"), stroke = c(0.7, 0))
+#     )
+#   ) +
+#   theme_void() +
+#   theme(legend.title = element_blank(), text = element_text(size = 20))
 
-# Change font size, point size, and relative point size (to match above)
-plot_legend_cd3 <- ggplot() +
-  geom_point(aes(x = x, y = y, alpha = "algorithm prediction"),
-    shape = 21,
-    data = fake_data,
-    fill = "black",
-    size = 10
-  ) +
-  geom_point(aes(x = x, y = y, alpha = "CD3 staining"),
-    shape = 21,
-    data = fake_data,
-    size = 10
-  ) +
-  scale_alpha_manual(values = c(
-    "CD3 staining" = 21,
-    "T-cell presence predicted" = 21
-  )) +
-  scale_color_manual(values = c(
-    "Correct" = "dodgerblue",
-    "Incorrect" = "firebrick1"
-  )) +
-  geom_point(aes(x = x, y = y, color = "Correct"),
-    shape = 15,
-    data = fake_data,
-    size = 10
-  ) +
-  geom_point(aes(x = x, y = y, color = "Incorrect"),
-    shape = 15,
-    data = fake_data,
-    size = 10
-  ) +
-  guides(
-    alpha = guide_legend(
-      override.aes = list(fill = list(NA, "black"), stroke = c(0.7, 0))
-    )
-  ) +
-  theme_void() +
-  theme(legend.title = element_blank(), text = element_text(size = 20))
-
-legend_cd3 <- get_legend(plot_legend_cd3)
+# legend_cd3 <- get_legend(plot_legend_cd3)
 ```
 
 ```{r}
-ggdraw(plot_grid(nnls_cd3_plot, card_cd3_plot, legend_cd3, nrow = 1, align = "h", axis = "r", rel_widths = c(3, 3, 2)))
-ggsave("nnls_cd3_plot.pdf", width = 42, height = 18, units = "cm")
-ggsave("nnls_cd3_plot.png", width = 42, height = 18, units = "cm")
+# ggdraw(plot_grid(nnls_cd3_plot, card_cd3_plot, legend_cd3, nrow = 1, align = "h", axis = "r", rel_widths = c(3, 3, 2)))
+# ggsave(paste0(fig_res_dir, "nnls_cd3_plot.pdf"), width = 42, height = 18, units = "cm")
+# ggsave(paste0(fig_res_dir, "nnls_cd3_plot.png"), width = 42, height = 18, units = "cm")
 ```
 
 
@@ -325,11 +326,11 @@ ggdraw(
   )
 )
 ggsave(
-  "/Users/jysumac/Projects/SpatialDeconv/results/figures/if/tumor_infiltration.pdf", 
+  paste0(fig_res_dir, "tumor_infiltration.pdf"), 
   width = 20, height = 20, units = "cm"
 )
 ggsave(
-  "/Users/jysumac/Projects/SpatialDeconv/results/figures/if/tumor_infiltration.png", 
+  paste0(fig_res_dir, "tumor_infiltration.png"), 
   width = 20, height = 20, units = "cm"
 )
 ```
